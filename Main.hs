@@ -33,16 +33,6 @@ parseURL s = do
 
 data Config = Config URI Text deriving (Show)
 
--- | Convenience function to extract an environment variable
-eitherEnv :: Text -> IO (Either Text Text)
-eitherEnv query = do
-  url <- System.Environment.lookupEnv (unpack query)
-  return
-    ( case url of
-        Nothing -> Left ("Missing " <> query <> " environment variable")
-        Just url' -> Right (pack url')
-    )
-
 -- | This gets stored on disk so we can skip network requests if the cache is
 -- still valid
 data KeysCache = KeysCache
@@ -149,14 +139,9 @@ main = do
     getOptions =
       let onFail err = do print err; exitWith (ExitFailure 1)
        in do
-            (tryEnv :: Either Text [Text]) <-
-              sequence
-                <$> sequence
-                  [ eitherEnv "PUBLIC_KEYS_URL",
-                    eitherEnv "KEYS_CACHE_PATH"
-                  ]
+            urlUnparsed <- pack <$> System.Environment.getEnv "PUBLIC_KEYS_URL"
 
-            [urlUnparsed, cache] <- either onFail return tryEnv
+            cache <- pack <$> System.Environment.getEnv "KEYS_CACHE_PATH"
 
             tryParseUrl <- parseURL urlUnparsed
 
